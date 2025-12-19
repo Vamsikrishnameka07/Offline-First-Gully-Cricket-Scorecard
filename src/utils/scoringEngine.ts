@@ -168,17 +168,8 @@ export const handleDelivery = (match: Match, ballInput: {
 
     // Wicket Logic
     if (newBall.isWicket) {
-        const nextBatsman = finalInning.players.find(p =>
-            p.id !== finalInning.strikerId &&
-            p.id !== finalInning.nonStrikerId &&
-            !p.batting.isOut
-        );
-
-        if (nextBatsman) {
-            finalInning.strikerId = nextBatsman.id;
-        } else {
-            finalInning.strikerId = null;
-        }
+        // ALWAYS set strikerId to null on wicket to trigger Manual Selection in UI
+        finalInning.strikerId = null;
     } else {
         // Crossing Logic
         const runsRan = newBall.runs;

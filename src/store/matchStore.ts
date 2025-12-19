@@ -21,7 +21,8 @@ interface MatchState {
     addBall: (ball: Ball) => Promise<void>;
     undoLastBall: () => Promise<void>;
     lockCurrentOver: () => Promise<void>;
-    startNextOver: () => Promise<void>;
+    setStrikerId: (playerId: string) => Promise<void>;
+    startNextOver: (bowlerId?: string) => Promise<void>;
 }
 
 export const useMatchStore = create<MatchState>((set, get) => ({
@@ -39,6 +40,17 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         await saveMatch(match);
         set({ currentMatch: match });
         return match.id;
+    },
+
+    setStrikerId: async (playerId: string) => {
+        const { currentMatch } = get();
+        if (!currentMatch) return;
+
+        const newMatch = JSON.parse(JSON.stringify(currentMatch)) as Match;
+        newMatch.innings[newMatch.currentInningIndex].strikerId = playerId;
+
+        await saveMatch(newMatch);
+        set({ currentMatch: newMatch });
     },
 
     addBall: async (ball: Ball) => {
@@ -64,10 +76,6 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                 newMatch.winner = newMatch.teamB;
                 newMatch.winMargin = `${10 - newMatch.innings[1].totalWickets} Wickets`
             }
-            // Note: "All out" end condition is handled where? 
-            // Currently "All out" signals `strikerId = null`. 
-            // If strikerId is null, we should probably auto-end innings?
-            // But for now, let's just stick to "Winning Run".
         }
 
         await saveMatch(newMatch);
@@ -119,19 +127,28 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         }
     },
 
-    startNextOver: async () => {
+    startNextOver: async (bowlerId?: string) => {
         const { currentMatch } = get();
         if (!currentMatch) return;
 
         const newMatch = JSON.parse(JSON.stringify(currentMatch)) as Match;
         const inning = newMatch.innings[newMatch.currentInningIndex];
 
-        // Check if max overs reached?
-        if (inning.overs.length >= newMatch.rules.overs) {
+        // Check Inning Completion (Max Overs or All Out)
+        // Standard cricket: All out is usually when wickets = players - 1 (since 2 batsmen needed)
+        // But for gully cricket, sometimes last man standing counts? Assuming standard - 1 for now or 10.
+        // Let's use a safe fallback: if provided players > 0, use len-1, else 10.
+        const maxWickets = inning.players.length > 0 ? (inning.players.length - 1) : 10;
+        const isAllOut = inning.totalWickets >= maxWickets;
+        const isOversComplete = inning.overs.length >= newMatch.rules.overs;
+
+        if (isOversComplete || isAllOut) {
             // Inning 1 Ends -> Start Inning 2
             if (newMatch.currentInningIndex === 0) {
                 newMatch.currentInningIndex = 1;
                 const secondInning = newMatch.innings[1];
+
+                // Ensure Inning 2 is ready
                 if (secondInning.overs.length === 0) {
                     secondInning.overs.push({
                         number: 1,
@@ -151,12 +168,13 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                 // Simple result calculation
                 const runsA = newMatch.innings[0].totalRuns;
                 const runsB = newMatch.innings[1].totalRuns;
+
                 if (runsA > runsB) {
                     newMatch.winner = newMatch.teamA;
                     newMatch.winMargin = `${runsA - runsB} Runs`;
                 } else if (runsB > runsA) {
                     newMatch.winner = newMatch.teamB;
-                    newMatch.winMargin = `${10 - newMatch.innings[1].totalWickets} Wickets`;
+                    newMatch.winMargin = `${maxWickets - newMatch.innings[1].totalWickets} Wickets`; // Approx logic
                 } else {
                     newMatch.winner = "Draw";
                     newMatch.winMargin = "Tie";
@@ -169,7 +187,7 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         }
 
         // Use Engine for next over creation (handles rotation logic)
-        const updatedMatch = startNextOverEngine(newMatch);
+        const updatedMatch = startNextOverEngine(newMatch, bowlerId);
         await saveMatch(updatedMatch);
         set({ currentMatch: updatedMatch });
     }

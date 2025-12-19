@@ -9,38 +9,25 @@ interface ScoreButtonsProps {
 }
 
 export default function ScoreButtons({ onScore, onUndo, disabled }: ScoreButtonsProps) {
-    const btnClass = "h-16 rounded-xl font-bold text-xl shadow-lg active:scale-95 transition-all flex items-center justify-center";
+    const btnClass = "h-14 rounded-2xl font-bold text-xl shadow-sm active:scale-95 transition-all flex items-center justify-center";
+    const neutralBtn = "bg-[#2C2C2E] text-white hover:bg-[#3A3A3C]";
 
     return (
-        <div className="grid grid-cols-4 gap-3 p-4 bg-neutral-900 pb-8 rounded-t-3xl border-t border-neutral-800">
+        <div className="grid grid-cols-4 gap-3 p-4 bg-[#1C1C1E] rounded-3xl shadow-2xl border border-gray-800">
             {/* Row 1: 0, 1, 2, 3 */}
-            <button onClick={() => onScore("DOT", 0, false)} disabled={disabled} className={cn(btnClass, "bg-neutral-800 text-neutral-400 hover:bg-neutral-700")}>0</button>
-            <button onClick={() => onScore("RUN", 1, false)} disabled={disabled} className={cn(btnClass, "bg-neutral-800 text-white hover:bg-neutral-700")}>1</button>
-            <button onClick={() => onScore("RUN", 2, false)} disabled={disabled} className={cn(btnClass, "bg-neutral-800 text-white hover:bg-neutral-700")}>2</button>
-            <button onClick={() => onScore("RUN", 3, false)} disabled={disabled} className={cn(btnClass, "bg-neutral-800 text-white hover:bg-neutral-700")}>3</button>
+            <button onClick={() => onScore("DOT", 0, false)} disabled={disabled} className={cn(btnClass, neutralBtn, "text-gray-400")}>0</button>
+            <button onClick={() => onScore("RUN", 1, false)} disabled={disabled} className={cn(btnClass, neutralBtn)}>1</button>
+            <button onClick={() => onScore("RUN", 2, false)} disabled={disabled} className={cn(btnClass, neutralBtn)}>2</button>
+            <button onClick={() => onScore("RUN", 3, false)} disabled={disabled} className={cn(btnClass, neutralBtn)}>3</button>
 
             {/* Row 2: 4, 6, W, Undo */}
-            <button onClick={() => onScore("FOUR", 4, false)} disabled={disabled} className={cn(btnClass, "bg-blue-600 text-white hover:bg-blue-700")}>4</button>
-            <button onClick={() => onScore("SIX", 6, false)} disabled={disabled} className={cn(btnClass, "bg-purple-600 text-white hover:bg-purple-700")}>6</button>
-            <button onClick={() => onScore("WICKET", 0, true)} disabled={disabled} className={cn(btnClass, "bg-red-600 text-white hover:bg-red-700")}>OUT</button>
+            <button onClick={() => onScore("FOUR", 4, false)} disabled={disabled} className={cn(btnClass, "bg-[#3478F6] text-white hover:bg-blue-500")}>4</button>
+            <button onClick={() => onScore("SIX", 6, false)} disabled={disabled} className={cn(btnClass, "bg-[#AF52DE] text-white hover:bg-purple-500")}>6</button>
+            <button onClick={() => onScore("WICKET", 0, true)} disabled={disabled} className={cn(btnClass, "bg-[#FF3B30] text-white hover:bg-red-500")}>OUT</button>
 
-            <button onClick={onUndo} className={cn(btnClass, "bg-neutral-800 text-yellow-500 hover:bg-neutral-700")}>
+            <button onClick={onUndo} className={cn(btnClass, "bg-[#2C2C2E] text-yellow-500 hover:bg-[#3A3A3C]")}>
                 <Undo2 size={24} />
             </button>
-
-            {/* Row 3: Extras (optional but kept per spec 'Flexible Rules') - actually User spec didn't explicitly ask for Wide buttons on main screen but "Flexible rules". 
-          I'll keep it simple: Just Dot, 1,2,3,4,6,W, Undo for MVP.
-          Maybe Wide/NoBall can be added later or via long press?
-          I added BallType WIDE in types.
-          Let's add 'Wd' and 'Nb' buttons? Or stick to strict "One-tap" requirements.
-          "Buttons: Dot, 1 2 3, 4 6, Wicket, Undo". That's it.
-          So user might treat Wide as '1' or 'Dot' + extra manually? 
-          Or maybe I should adhere strictly to the "Buttons" list.
-          "Buttons: Dot, 1 2 3, 4 6, Wicket, Undo". Explicit list.
-          I will just stick to this.
-          Wait, "Flexible gully rules" usually implies wides handling. 
-          But the UI spec listed specific buttons. I'll stick to those for the Screen 2.
-       */}
         </div>
     );
 }
