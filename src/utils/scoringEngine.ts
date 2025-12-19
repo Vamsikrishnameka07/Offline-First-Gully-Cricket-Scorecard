@@ -1,4 +1,4 @@
-import type { Match, Inning, Ball } from '../types';
+import type { Match, Ball } from '../types';
 
 
 

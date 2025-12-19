@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useMatchStore } from '../store/matchStore';
-import { ArrowLeft, MoreVertical, RotateCcw, Share2, AlertCircle } from 'lucide-react'; // Changed Lock to Share2 to match image icon roughly (or standard menu)
+import { ArrowLeft, Share2, AlertCircle } from 'lucide-react'; // Changed Lock to Share2 to match image icon roughly (or standard menu)
 import { useNavigate, useParams } from 'react-router-dom';
 import ScoreButtons from '../components/ScoreButtons';
-import OverSummary from '../components/OverSummary';
 import { PlayerSelectModal } from '../components/PlayerSelectModal';
 
 export default function Scoreboard() {

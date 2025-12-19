@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useMatchStore } from '../store/matchStore';
-import { Trophy, Home, Share2, Shield } from 'lucide-react';
+import { Trophy, Home, Shield } from 'lucide-react';
 import type { Inning } from '../types';
 
 export default function Summary() {
