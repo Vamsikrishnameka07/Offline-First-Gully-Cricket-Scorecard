@@ -1,13 +1,23 @@
 import { create } from 'zustand';
 import type { Match, Ball } from '../types';
 import { saveMatch, getMatch } from '../db';
-import { addBallToMatch, createNewMatch, calculateInningStats } from '../utils/scoringLogic';
+import { createNewMatch } from '../utils/scoringLogic';
+import { handleDelivery, startNextOverEngine, recalculateMatchStats } from '../utils/scoringEngine';
+
+
 
 interface MatchState {
     currentMatch: Match | null;
     isLoading: boolean;
     loadMatch: (id: string) => Promise<void>;
-    startNewMatch: (data: { teamA: string; teamB: string; overs: number; ballsPerOver: number }) => Promise<string>;
+    startNewMatch: (data: {
+        teamA: string;
+        teamB: string;
+        overs: number;
+        ballsPerOver: number;
+        playersA?: string[];
+        playersB?: string[];
+    }) => Promise<string>;
     addBall: (ball: Ball) => Promise<void>;
     undoLastBall: () => Promise<void>;
     lockCurrentOver: () => Promise<void>;
@@ -24,8 +34,8 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         set({ currentMatch: match || null, isLoading: false });
     },
 
-    startNewMatch: async ({ teamA, teamB, overs, ballsPerOver }) => {
-        const match = createNewMatch(teamA, teamB, overs, ballsPerOver);
+    startNewMatch: async ({ teamA, teamB, overs, ballsPerOver, playersA, playersB }) => {
+        const match = createNewMatch(teamA, teamB, overs, ballsPerOver, 1, 1, playersA, playersB);
         await saveMatch(match);
         set({ currentMatch: match });
         return match.id;
@@ -35,7 +45,31 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         const { currentMatch } = get();
         if (!currentMatch) return;
 
-        const newMatch = addBallToMatch(currentMatch, ball);
+        // Adapt UI Ball object to Engine Input
+        const newMatch = handleDelivery(currentMatch, {
+            type: ball.type,
+            runs: ball.runs,
+            isWicket: ball.isWicket,
+            extras: ball.extras,
+            isValid: ball.isValid
+        });
+
+        // CHECK MATCH END CONDITION (Winning Run)
+        if (newMatch.currentInningIndex === 1) {
+            const target = newMatch.innings[0].totalRuns + 1;
+            const currentRuns = newMatch.innings[1].totalRuns;
+
+            if (currentRuns >= target) {
+                newMatch.status = "COMPLETED";
+                newMatch.winner = newMatch.teamB;
+                newMatch.winMargin = `${10 - newMatch.innings[1].totalWickets} Wickets`
+            }
+            // Note: "All out" end condition is handled where? 
+            // Currently "All out" signals `strikerId = null`. 
+            // If strikerId is null, we should probably auto-end innings?
+            // But for now, let's just stick to "Winning Run".
+        }
+
         await saveMatch(newMatch);
         set({ currentMatch: newMatch });
     },
@@ -50,14 +84,23 @@ export const useMatchStore = create<MatchState>((set, get) => ({
         const currentOver = inning.overs[inning.overs.length - 1];
 
         if (currentOver && currentOver.balls.length > 0) {
-            if (currentOver.isLocked) {
-                return;
+            if (currentOver.isLocked) return;
+
+            // 1. Pop Last Ball
+            const poppedBall = currentOver.balls.pop();
+
+            // 2. Restore State Context (Event Sourcing Reverse)
+            if (poppedBall) {
+                if (poppedBall.strikerId) inning.strikerId = poppedBall.strikerId;
+                if (poppedBall.nonStrikerId) inning.nonStrikerId = poppedBall.nonStrikerId;
+                if (poppedBall.bowlerId) inning.currentBowlerId = poppedBall.bowlerId;
             }
-            currentOver.balls.pop();
-            // Recalc
-            newMatch.innings[newMatch.currentInningIndex] = calculateInningStats(inning);
-            await saveMatch(newMatch);
-            set({ currentMatch: newMatch });
+
+            // 3. Recalculate Stats for the whole MATCH
+            const recalculatedMatch = recalculateMatchStats(newMatch);
+
+            await saveMatch(recalculatedMatch);
+            set({ currentMatch: recalculatedMatch });
         }
     },
 
@@ -105,6 +148,7 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             // Inning 2 Ends -> Match Complete
             else {
                 newMatch.status = "COMPLETED";
+                // Simple result calculation
                 const runsA = newMatch.innings[0].totalRuns;
                 const runsB = newMatch.innings[1].totalRuns;
                 if (runsA > runsB) {
@@ -112,7 +156,6 @@ export const useMatchStore = create<MatchState>((set, get) => ({
                     newMatch.winMargin = `${runsA - runsB} Runs`;
                 } else if (runsB > runsA) {
                     newMatch.winner = newMatch.teamB;
-                    // Simple margin for MVP
                     newMatch.winMargin = `${10 - newMatch.innings[1].totalWickets} Wickets`;
                 } else {
                     newMatch.winner = "Draw";
@@ -125,17 +168,10 @@ export const useMatchStore = create<MatchState>((set, get) => ({
             }
         }
 
-        // Create new over
-        inning.overs.push({
-            number: inning.overs.length + 1,
-            balls: [],
-            isLocked: false,
-            totalRuns: 0,
-            wickets: 0
-        });
-
-        await saveMatch(newMatch);
-        set({ currentMatch: newMatch });
+        // Use Engine for next over creation (handles rotation logic)
+        const updatedMatch = startNextOverEngine(newMatch);
+        await saveMatch(updatedMatch);
+        set({ currentMatch: updatedMatch });
     }
 
 }));

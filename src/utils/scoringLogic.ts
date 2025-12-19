@@ -88,9 +88,26 @@ export const createNewMatch = (
     oversCols: number,
     ballsPerOver: number,
     wideRuns: number = 1,
-    noBallRuns: number = 1
+    noBallRuns: number = 1,
+    playerNamesA?: string[],
+    playerNamesB?: string[]
 ): Match => {
     const rules = { overs: oversCols, ballsPerOver, wideRuns, noBallRuns };
+
+    // Function to generate default players
+    const generatePlayers = (teamName: string, teamId: string, customNames?: string[]): import('../types').Player[] => {
+        return Array.from({ length: 11 }, (_, i) => ({
+            id: `${teamId}-p${i + 1}`,
+            name: customNames?.[i] || `${teamName} Player ${i + 1}`,
+            team: teamName,
+            batting: { runs: 0, balls: 0, fours: 0, sixes: 0, isOut: false },
+            bowling: { overs: 0, balls: 0, runsConceded: 0, wickets: 0, maidens: 0 }
+        }));
+    };
+
+    const playersA = generatePlayers(teamA, 'teamA', playerNamesA);
+    const playersB = generatePlayers(teamB, 'teamB', playerNamesB);
+
     return {
         id: crypto.randomUUID(),
         teamA,
@@ -102,6 +119,10 @@ export const createNewMatch = (
             {
                 battingTeam: teamA,
                 bowlingTeam: teamB,
+                players: playersA,
+                strikerId: playersA[0].id,
+                nonStrikerId: playersA[1].id,
+                currentBowlerId: playersB[10].id, // Default bowler (last player)
                 overs: [{ number: 1, balls: [], isLocked: false, totalRuns: 0, wickets: 0 }],
                 totalRuns: 0,
                 totalWickets: 0,
@@ -110,6 +131,10 @@ export const createNewMatch = (
             {
                 battingTeam: teamB,
                 bowlingTeam: teamA,
+                players: playersB,
+                strikerId: playersB[0].id,
+                nonStrikerId: playersB[1].id,
+                currentBowlerId: playersA[10].id,
                 overs: [], // Empty until 2nd inning starts
                 totalRuns: 0,
                 totalWickets: 0,

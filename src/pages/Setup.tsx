@@ -13,6 +13,11 @@ export default function Setup() {
     const [ballsPerOver, setBallsPerOver] = useState(6);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Advanced: Player Names
+    const [showPlayerInputs, setShowPlayerInputs] = useState(false);
+    const [playersA, setPlayersA] = useState<string[]>(Array(11).fill(''));
+    const [playersB, setPlayersB] = useState<string[]>(Array(11).fill(''));
+
     const handleStart = async (e: FormEvent) => {
         e.preventDefault();
         if (!teamA.trim() || !teamB.trim()) return;
@@ -22,7 +27,9 @@ export default function Setup() {
             teamA,
             teamB,
             overs,
-            ballsPerOver
+            ballsPerOver,
+            playersA: playersA.map(p => p.trim()),
+            playersB: playersB.map(p => p.trim()),
         });
         setIsSubmitting(false);
         navigate(`/match/${matchId}`);
@@ -63,7 +70,48 @@ export default function Setup() {
                     </div>
                 </div>
 
-                {/* Rules Section */}
+                {/* Player Names Toggle */}
+                <div className="space-y-4">
+                    <button
+                        type="button"
+                        onClick={() => setShowPlayerInputs(!showPlayerInputs)}
+                        className="text-xs font-semibold text-neutral-400 uppercase tracking-wider hover:text-white transition-colors flex items-center gap-2"
+                    >
+                        {showPlayerInputs ? '- Hide Player Names' : '+ Add Player Names (Optional)'}
+                    </button>
+
+                    {showPlayerInputs && (
+                        <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                            {[teamA, teamB].map((team, tIdx) => (
+                                <div key={tIdx} className="space-y-2">
+                                    <div className="text-xs text-neutral-500 font-bold uppercase">{team || `Team ${tIdx + 1}`} Players</div>
+                                    {Array.from({ length: 11 }).map((_, pIdx) => (
+                                        <input
+                                            key={pIdx}
+                                            type="text"
+                                            placeholder={`Player ${pIdx + 1}`}
+                                            value={tIdx === 0 ? playersA[pIdx] : playersB[pIdx]}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                if (tIdx === 0) {
+                                                    const newP = [...playersA];
+                                                    newP[pIdx] = val;
+                                                    setPlayersA(newP);
+                                                } else {
+                                                    const newP = [...playersB];
+                                                    newP[pIdx] = val;
+                                                    setPlayersB(newP);
+                                                }
+                                            }}
+                                            className="w-full bg-neutral-800 border-none rounded-lg p-2 text-sm text-white placeholder-neutral-600 focus:ring-1 focus:ring-green-500 outline-none"
+                                        />
+                                    ))}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
                 <div className="space-y-4">
                     <label className="flex items-center gap-2 text-blue-400 font-semibold uppercase text-xs tracking-wider">
                         <Timer size={16} /> Match Settings
